@@ -1,6 +1,8 @@
 # Prerequisites
 *.d
 
+.zig-cache/
+
 # Compiled Object files
 *.slo
 *.lo
