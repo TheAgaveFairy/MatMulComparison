@@ -18,8 +18,10 @@ struct TestResult:
 
 fn oneDimensionalNaiveList(N: Int) -> TestResult:
     """
+    If we wanted to do more of a "malloc" style:
     var a = memory.UnsafePointer[Scalar[DType.int32]].alloc(N * N)
-    random.rand(a, N * N, max=10)
+    Random.rand(a, N * N, max=10)
+    .
     """
 
     var capacity = N * N
@@ -42,7 +44,8 @@ fn oneDimensionalNaiveList(N: Int) -> TestResult:
     
     var end_mul = time.perf_counter_ns()
 
-    if False:
+    print_debug = False #and N < (1 << 4)
+    if print_debug:
         for i in range(N):
             for j in range(N):
                 print(c[i * N + j], ",", end=' ')
@@ -50,7 +53,6 @@ fn oneDimensionalNaiveList(N: Int) -> TestResult:
         
     var time_to_run = (end_mul - start_mul) // 1000 #ns to us
     return TestResult(time_to_run, "oneDimensionalNaiveList") # __name__ i guess isn't a thing yet
-
 
 
 def main():
