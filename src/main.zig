@@ -189,7 +189,7 @@ pub fn main() !void {
 
     const argc = std.os.argv.len;
     if (argc < 2) {
-        printerr("Please supply N (2 ** N for matrix size)\n", .{});
+        printerr("Please supply N (2 ** N for matrix size). {} given.\n", .{argc});
         return error.NoArgsSupplied;
     }
 

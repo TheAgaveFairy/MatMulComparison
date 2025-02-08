@@ -7,7 +7,47 @@ import (
 	"strconv"
 	"time"
 )
+func transposeMul(n int) int64 {
+	a := make([]int, n * n)
+	b := make([]int, n * n)
+	c := make([]int, n * n)
 
+	for i := 0; i < n * n; i++ {
+		a[i] = 1
+		b[i] = 1
+	}
+
+	start_time := time.Now()
+
+	// transpose
+	for i := 0; i < n; i++ {
+		for j := 0; j < n; j++ {
+			temp := b[i * n + j]
+			b[i * n + j] = b[j * n + i];
+			b[j * n + i] = temp
+		}
+	}
+
+	for i:= 0; i < n; i++ {
+		for j := 0; j < n; j++ {
+			temp := 0
+			for k := 0; k < n; k++ {
+				temp += a[i * n + k] * a[j * n + k]
+			}
+			c[i * n + j] = temp
+		}
+	}	
+	// transpose
+	for i := 0; i < n; i++ {
+		for j := 0; j < n; j++ {
+			temp := b[i * n + j]
+			b[i * n + j] = b[j * n + i];
+			b[j * n + i] = temp
+		}
+	}
+
+	return time.Since(start_time).Microseconds()
+}
 func naiveMul(n int) int64 {
 	a := make([]int, n * n)
 	b := make([]int, n * n)
@@ -30,15 +70,6 @@ func naiveMul(n int) int64 {
 		}
 	}	
 
-	/*
-	for i := 0; i < n; i++ {
-		for j := 0; j < n; j++ {
-			fmt.Printf("%d, ", c[i * n + j])
-		}
-		fmt.Printf("\n")
-	}
-	*/
-
 	return time.Since(start_time).Microseconds()
 }
 
@@ -54,4 +85,6 @@ func main() {
 
 	naive_result := naiveMul(N)
 	fmt.Printf("naive took %dus\n", naive_result)
+	transpose_result := transposeMul(N)
+	fmt.Printf("trans took %dus\n", transpose_result)
 }

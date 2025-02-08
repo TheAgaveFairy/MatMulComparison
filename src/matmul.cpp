@@ -24,7 +24,6 @@ int lazyMul1D(int n) {
 		for (int j = 0; j < n; j++) {
 			int sum = 0;
 			for (int k = 0; k < n; k++) {
-				//res[i * n + j] += a[i * n + k] * b[k * n + j];
 				sum += a[i * n + k] * b[k * n + j];
 			}
 			res[i * n + j] = sum;
@@ -41,14 +40,15 @@ int vectorMul1D(int n) {
 	std::vector<int> b(n * n);
 	std::vector<int> res(n * n);
 
+	/*
 	std::random_device rand_dev;
 	std::mt19937 gen(rand_dev());
 
 	std::uniform_int_distribution<int> val_dist(0, 100); // doesnt really matter
-
+	*/
 	for (int i = 0; i < n * n; i++) {
-		a[i] = val_dist(gen);
-		b[i] = val_dist(gen);
+		a[i] = 1;//val_dist(gen);
+		b[i] = 1;//val_dist(gen);
 	}
 	for (int i = 0; i < n; i++) {
 		for (int j = 0; j < n; j++) {
@@ -101,15 +101,16 @@ int vectorMul2D(int n) {
 	std::vector<std::vector<int>> b(n, std::vector<int>(n));
 	std::vector<std::vector<int>> res(n, std::vector<int>(n));
 
+	/*
 	std::random_device rand_dev;
 	std::mt19937 gen(rand_dev());
 
 	std::uniform_int_distribution<int> val_dist(0, 100); // doesnt really matter
-
+	*/
 	for (int i = 0; i < n; i++) {
 		for (int j = 0; j < n; j++) {
-			a[i][j] = val_dist(gen);
-			b[i][j] = val_dist(gen);
+			a[i][j] = 1;//val_dist(gen);
+			b[i][j] = 1;//val_dist(gen);
 		}
 	}
 	for (int i = 0; i < n; i++) {
