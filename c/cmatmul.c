@@ -3,7 +3,13 @@
 #include <omp.h>
 
 int ompNaive1D(int n) {
-	printf("Num threads for OMP: %d\n", omp_get_num_threads());
+	#pragma omp parallel
+	{
+		#pragma omp single
+		printf("Num threads for OMP: %d\n", omp_get_num_threads());
+	
+	}
+
 	int *a = malloc(n * n * sizeof(int));
 	int *b = malloc(n * n * sizeof(int));
 	int *c = malloc(n * n * sizeof(int));
@@ -110,6 +116,8 @@ int main(int argc, char **argv) {
 
 	int n_exp = atoi(argv[1]);
 	int N = 1 << n_exp;
+
+	//omp_set_num_threads(12);
 
 	int naive_us = naive1D(N);
 	printf("Naive 1d: %10dus\n", naive_us);

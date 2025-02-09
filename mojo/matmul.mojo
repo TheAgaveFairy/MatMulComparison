@@ -44,7 +44,7 @@ fn oneDimensionalNaiveList(N: Int) -> TestResult:
     
     var end_mul = time.perf_counter_ns()
 
-    print_debug = False #and N < (1 << 4)
+    var print_debug = False #and N < (1 << 4)
     if print_debug:
         for i in range(N):
             for j in range(N):

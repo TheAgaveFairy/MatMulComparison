@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -g -O3
+CFLAGS = -g -fopenmp
 
 all: cmatmul
 
