@@ -7,7 +7,28 @@ import (
 	"strconv"
 	"time"
 )
+
+type TestResult struct {
+	CallingFn	string
+	TimePrep	int64 // microseconds
+	TimeRunning	int64 // microseconds
+}
+
+func NewTestResult(callingFn string, tPrep int64, tRun int64) TestResult {
+	return TestResult{
+		CallingFn:		callingFn,
+		TimePrepared:	tPrep,
+		TimeRunning:	tRun,
+	}
+}
+
+func (tr TestResult) Display() {
+	fmt.Printf("%s:\n\tTime to Allocate and Fill:\t%dus.\n\tTime to Multiply:\t\t%dus\n",
+		tr.CallingFn, tr.TimePrepared, tr.TimeRunning)
+}
+
 func transposeMul(n int) int64 {
+	prep_time := time.Now()
 	a := make([]int, n * n)
 	b := make([]int, n * n)
 	c := make([]int, n * n)
