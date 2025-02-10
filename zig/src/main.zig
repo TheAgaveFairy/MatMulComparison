@@ -22,9 +22,10 @@ const TestResult = struct {
         printerr("{str}:\n\tTime to Allocate and Fill:\t{d}us.\n\tTime to Multiply:\t\t{d}us\n", .{ self.calling_fn, self.time_prepared, self.time_running });
     }
 };
+
 fn alreadyTransposedMul(allocator: std.mem.Allocator, n: usize) !TestResult {
-    var prng = std.Random.DefaultPrng.init(42);
-    const random = prng.random();
+    //var prng = std.Random.DefaultPrng.init(42);
+    //const random = prng.random();
 
     const start_time = std.time.microTimestamp();
 
@@ -37,8 +38,8 @@ fn alreadyTransposedMul(allocator: std.mem.Allocator, n: usize) !TestResult {
 
     var x: usize = 0;
     while (x < n * n) : (x += 1) {
-        a[x] = random.intRangeAtMost(usize, 0, 1000);
-        b[x] = random.intRangeAtMost(usize, 0, 1000);
+        a[x] = 1; //random.intRangeAtMost(usize, 0, 1000);
+        b[x] = 1; //random.intRangeAtMost(usize, 0, 1000);
     }
 
     const mul_time = std.time.microTimestamp();
@@ -57,8 +58,8 @@ fn alreadyTransposedMul(allocator: std.mem.Allocator, n: usize) !TestResult {
     return TestResult.new(@src().fn_name, mul_time - start_time, end_time - mul_time);
 }
 fn transposeToNewMul(allocator: std.mem.Allocator, n: usize) !TestResult {
-    var prng = std.Random.DefaultPrng.init(42);
-    const random = prng.random();
+    //var prng = std.Random.DefaultPrng.init(42);
+    //const random = prng.random();
 
     const start_time = std.time.microTimestamp();
 
@@ -73,8 +74,8 @@ fn transposeToNewMul(allocator: std.mem.Allocator, n: usize) !TestResult {
 
     var x: usize = 0;
     while (x < n * n) : (x += 1) {
-        a[x] = random.intRangeAtMost(usize, 0, 1000);
-        b[x] = random.intRangeAtMost(usize, 0, 1000);
+        a[x] = 1; //random.intRangeAtMost(usize, 0, 1000);
+        b[x] = 1; //random.intRangeAtMost(usize, 0, 1000);
     }
 
     const mul_time = std.time.microTimestamp();
@@ -101,8 +102,8 @@ fn transposeToNewMul(allocator: std.mem.Allocator, n: usize) !TestResult {
     return TestResult.new(@src().fn_name, mul_time - start_time, end_time - mul_time);
 }
 fn transposeMul(allocator: std.mem.Allocator, n: usize) !TestResult {
-    var prng = std.Random.DefaultPrng.init(42);
-    const random = prng.random();
+    //var prng = std.Random.DefaultPrng.init(42);
+    //const random = prng.random();
 
     const start_time = std.time.microTimestamp();
 
@@ -115,8 +116,8 @@ fn transposeMul(allocator: std.mem.Allocator, n: usize) !TestResult {
 
     var x: usize = 0;
     while (x < n * n) : (x += 1) {
-        a[x] = random.intRangeAtMost(usize, 0, 1000);
-        b[x] = random.intRangeAtMost(usize, 0, 1000);
+        a[x] = 1; //random.intRangeAtMost(usize, 0, 1000);
+        b[x] = 1; //random.intRangeAtMost(usize, 0, 1000);
     }
 
     const mul_time = std.time.microTimestamp();
@@ -145,8 +146,8 @@ fn transposeMul(allocator: std.mem.Allocator, n: usize) !TestResult {
     return TestResult.new(@src().fn_name, mul_time - start_time, end_time - mul_time);
 }
 fn simdMul(allocator: std.mem.Allocator, n: usize) !TestResult {
-    var prng = std.Random.DefaultPrng.init(42);
-    const random = prng.random();
+    //var prng = std.Random.DefaultPrng.init(42);
+    //const random = prng.random();
 
     const start_time = std.time.microTimestamp();
 
@@ -162,8 +163,8 @@ fn simdMul(allocator: std.mem.Allocator, n: usize) !TestResult {
     var x: usize = 0;
     while (x < n * n) : (x += 1) {
         //a[i..i + vector_len] = @Vector(random.intRangeAtMost(usize, 0, 1000); // another day perhaps
-        a[x] = random.intRangeAtMost(usize, 0, 1000);
-        b[x] = random.intRangeAtMost(usize, 0, 1000);
+        a[x] = 1; //random.intRangeAtMost(usize, 0, 1000);
+        b[x] = 1; //random.intRangeAtMost(usize, 0, 1000);
     }
 
     const mul_time = std.time.microTimestamp();
@@ -203,9 +204,6 @@ fn ThreadData(comptime MatrixType: type) type { // comptime type gen fn!
 
 //fn threadedMul(data_ptr: *anyopaque) void {
 fn threadedMul(data: *ThreadData([]usize)) void {
-    //const MatrixType: type = ThreadData([]usize);
-    //const data: *MatrixType = @ptrCast(data_ptr);
-    //const data: *MatrixType = @alignCast(data_ptr);
     const n = data.n; // for ease
 
     for (data.row_start..data.row_end) |i| {
@@ -227,8 +225,6 @@ fn threadedOneDimMul(allocator: std.mem.Allocator, n: usize) !TestResult {
 
     const logical_cores = try std.Thread.getCpuCount();
     printerr("logical cores: {}\n", .{logical_cores});
-
-    //const rowsPerThread = (n + logical_cores - 1) / logical_cores;
 
     var thread_datas = try allocator.alloc(ThreadDataType, logical_cores);
     defer allocator.free(thread_datas);
