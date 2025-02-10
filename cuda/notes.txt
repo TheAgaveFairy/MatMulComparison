@@ -1,0 +1,16 @@
+
+  if (0) {
+    printf("hello from:\
+    blockIdx.x: %3d\
+    blockIdx.y: %3d\
+    threadIdx.x: %3d\
+    threadIdx.y: %3d\n",
+           blockIdx.x, blockIdx.y, threadIdx.x, threadIdx.y);
+  }
+
+  if (true && blockIdx.x == 0 && blockIdx.y == 0 && threadIdx.x == 0 &&
+      threadIdx.y == 0)
+    printf("blockDim.x: %d\nblockDim.y: %d\ngridDim.x: %d\ngridDim.y: %d\n",
+           blockDim.x, blockDim.y, gridDim.x, gridDim.y);
+
+  // printf("FART from %d, %d\n", row, col);

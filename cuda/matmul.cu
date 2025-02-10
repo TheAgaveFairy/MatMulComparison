@@ -10,6 +10,7 @@
 #define MAX_THREADS_PER_BLOCK 256     // could be 1024 at most
 #define SQRT_MAX_THREADS_PER_BLOCK 16 //
 
+// stole this from StackOverflow to handle errors
 #define gpuErrchk(ans)                                                         \
   {                                                                            \
     gpuAssert((ans), __FILE__, __LINE__);                                      \
@@ -60,25 +61,98 @@ dim3 calcBlockSize(int n) {
   return dim3(blockDimX, blockDimY, 1);
 }
 
+__global__ void transposeKernel(int n, int *input, int *output) {
+  int row = blockIdx.y * blockDim.y + threadIdx.y;
+  int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+  if (row < n && col < n) {
+    output[col * n + row] = input[row * n + col];
+  }
+}
+
+__global__ void transOneDimKernel(int n, int *a, int *b_t, int *c) {
+  int row = blockIdx.y * blockDim.y + threadIdx.y;
+  int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+  if (row < n && col < n) {
+    int sum = 0;
+    for (int k = 0; k < n; k++) {
+      sum += a[row * n + k] * b_t[col * n + k];
+    }
+    c[row * n + col] = sum;
+  }
+}
+
+TestResult transOneDim(int n) {
+  cudaEvent_t prep, start, end;
+  cudaEventCreate(&prep);
+  cudaEventCreate(&start);
+  cudaEventCreate(&end);
+  float ms_prep, ms_run;
+
+  cudaEventRecord(prep);
+
+  size_t capacity = n * n * sizeof(int);
+
+  int *a, *b, *c;
+  a = (int *)malloc(capacity);
+  b = (int *)malloc(capacity);
+  c = (int *)malloc(capacity);
+
+  for (int i = 0; i < n * n; i++) {
+    a[i] = 1;
+    b[i] = 1;
+  }
+
+  int *dev_a, *dev_b, *dev_b_t, *dev_c;
+  cudaMalloc(&dev_a, capacity);
+  cudaMalloc(&dev_b, capacity);
+  cudaMalloc(&dev_b_t, capacity);
+  cudaMalloc(&dev_c, capacity);
+
+  gpuErrchk(cudaMemcpy(dev_a, a, capacity, cudaMemcpyHostToDevice));
+  gpuErrchk(cudaMemcpy(dev_b, b, capacity, cudaMemcpyHostToDevice));
+  // gpuErrchk(cudaMemcpy(dev_c, c, capacity, cudaMemcpyHostToDevice));
+
+  dim3 dimBlock = calcBlockSize(n);
+  dim3 dimGrid = calcGridSize(n, dimBlock);
+
+  cudaEventRecord(start);
+
+  transposeKernel<<<dimGrid, dimBlock>>>(n, dev_b, dev_b_t);
+  gpuErrchk(cudaPeekAtLastError());
+
+  transOneDimKernel<<<dimGrid, dimBlock>>>(n, dev_a, dev_b_t, dev_c);
+  gpuErrchk(cudaPeekAtLastError());
+
+  cudaMemcpy(c, dev_c, capacity, cudaMemcpyDeviceToHost);
+
+  cudaFree(dev_a);
+  cudaFree(dev_b);
+  cudaFree(dev_b_t);
+  cudaFree(dev_c);
+
+  cudaEventRecord(end);
+  cudaEventSynchronize(end);
+  cudaEventElapsedTime(&ms_run, start, end);
+  cudaEventElapsedTime(&ms_prep, prep, start);
+
+  TestResult tr;
+  tr.calling_fn = "transOneDim";
+  tr.prep_time = ms_prep * 1000;
+  tr.run_time = ms_run * 1000;
+
+  free(a);
+  free(b);
+  free(c);
+
+  return tr;
+}
+
 __global__ void naiveOneDimKernel(int n, int *a, int *b, int *c) {
   int row = blockIdx.y * blockDim.y + threadIdx.y;
   int col = blockIdx.x * blockDim.x + threadIdx.x;
 
-  if (0) {
-    printf("hello from:\
-    blockIdx.x: %3d\
-    blockIdx.y: %3d\
-    threadIdx.x: %3d\
-    threadIdx.y: %3d\n",
-           blockIdx.x, blockIdx.y, threadIdx.x, threadIdx.y);
-  }
-
-  if (true && blockIdx.x == 0 && blockIdx.y == 0 && threadIdx.x == 0 &&
-      threadIdx.y == 0)
-    printf("blockDim.x: %d\nblockDim.y: %d\ngridDim.x: %d\ngridDim.y: %d\n",
-           blockDim.x, blockDim.y, gridDim.x, gridDim.y);
-
-  // printf("FART from %d, %d\n", row, col);
   if (row < n && col < n) {
     int sum = 0;
     for (int k = 0; k < n; k++) {
@@ -116,7 +190,7 @@ TestResult naiveOneDim(int n) {
 
   gpuErrchk(cudaMemcpy(dev_a, a, capacity, cudaMemcpyHostToDevice));
   gpuErrchk(cudaMemcpy(dev_b, b, capacity, cudaMemcpyHostToDevice));
-  gpuErrchk(cudaMemcpy(dev_c, c, capacity, cudaMemcpyHostToDevice));
+  // gpuErrchk(cudaMemcpy(dev_c, c, capacity, cudaMemcpyHostToDevice));
 
   dim3 dimBlock(calcBlockSize(n));
   dim3 dimGrid(calcGridSize(n, dimBlock));
@@ -126,8 +200,8 @@ TestResult naiveOneDim(int n) {
                                            dev_c); // block, threads per block
   gpuErrchk(cudaPeekAtLastError());
 
-  cudaMemcpy(a, dev_a, capacity, cudaMemcpyDeviceToHost);
-  cudaMemcpy(b, dev_b, capacity, cudaMemcpyDeviceToHost);
+  // cudaMemcpy(a, dev_a, capacity, cudaMemcpyDeviceToHost);
+  // cudaMemcpy(b, dev_b, capacity, cudaMemcpyDeviceToHost);
   cudaMemcpy(c, dev_c, capacity, cudaMemcpyDeviceToHost);
 
   if (!checkMatrix(c, n)) {
@@ -143,6 +217,10 @@ TestResult naiveOneDim(int n) {
 
   cudaEventElapsedTime(&ms_run, start, end);
   cudaEventElapsedTime(&ms_prep, prep, start);
+
+  free(a);
+  free(b);
+  free(c);
 
   TestResult tr;
   tr.calling_fn = "naiveOneDim";
@@ -164,6 +242,9 @@ int main(int argc, char **argv) {
 
   TestResult naiveOneDim_tr = naiveOneDim(n);
   printTestResult(naiveOneDim_tr);
+
+  TestResult transOneDim_tr = transOneDim(n);
+  printTestResult(transOneDim_tr);
 
   return EXIT_SUCCESS;
 }
