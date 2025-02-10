@@ -51,16 +51,44 @@ fn oneDimensionalNaiveList(N: Int) -> TestResult:
     
     var end_mul = time.perf_counter_ns()
 
-    var print_debug = False #and N < (1 << 4)
-    if print_debug:
-        for i in range(N):
-            for j in range(N):
-                print(c[i * N + j], ",", end=' ')
-            print()
-        
     var time_to_run = (end_mul - start_mul) // 1000 #ns to us
     #checkMatrix(N, c)
     return TestResult(time_to_run, "oneDimensionalNaiveList") # __name__ i guess isn't a thing yet
+
+
+fn oneDimensionalTransList(N: Int) -> TestResult:
+    var capacity = N * N
+    var a = collections.List[Int](capacity=capacity)
+    var b = collections.List[Int](capacity=capacity)
+    var c = collections.List[Int](capacity=capacity)
+    
+    for i in range(N * N):
+        a.append(1)
+        b.append(1) # if we do b[i] = 1, then the len() won't work as the size isn't updating
+
+    var start_mul = time.perf_counter_ns()
+
+    for i in range(N):
+        for j in range(N):
+            b[i * N + j], b[j * N + i] = b[j * N + i], b[i * N + j]
+
+    for i in range(N):
+        for j in range(N):
+            var temp_sum = 0
+            for k in range(N):
+                temp_sum += a[i * N + k] * b[j * N + k]
+            c[i * N + j] = temp_sum
+
+    for i in range(N):
+        for j in range(N):
+            b[i * N + j], b[j * N + i] = b[j * N + i], b[i * N + j]
+
+    
+    var end_mul = time.perf_counter_ns()
+
+    var time_to_run = (end_mul - start_mul) // 1000 #ns to us
+    #checkMatrix(N, c)
+    return TestResult(time_to_run, "oneDimensionalTransList") # __name__ i guess isn't a thing yet
 
 def main():
     args = sys.argv()
@@ -72,3 +100,7 @@ def main():
 
     one_dim_naive_list = oneDimensionalNaiveList(N)
     one_dim_naive_list.print()
+
+
+    one_dim_trans_list = oneDimensionalTransList(N)
+    one_dim_trans_list.print()

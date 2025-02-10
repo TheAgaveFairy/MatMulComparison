@@ -56,6 +56,50 @@ fn alreadyTransposedMul(allocator: std.mem.Allocator, n: usize) !TestResult {
 
     return TestResult.new(@src().fn_name, mul_time - start_time, end_time - mul_time);
 }
+fn transposeToNewMul(allocator: std.mem.Allocator, n: usize) !TestResult {
+    var prng = std.Random.DefaultPrng.init(42);
+    const random = prng.random();
+
+    const start_time = std.time.microTimestamp();
+
+    var a = try allocator.alloc(usize, n * n);
+    defer allocator.free(a);
+    var b = try allocator.alloc(usize, n * n);
+    defer allocator.free(b);
+    var b_t = try allocator.alloc(usize, n * n);
+    defer allocator.free(b_t);
+    var r = try allocator.alloc(usize, n * n);
+    defer allocator.free(r);
+
+    var x: usize = 0;
+    while (x < n * n) : (x += 1) {
+        a[x] = random.intRangeAtMost(usize, 0, 1000);
+        b[x] = random.intRangeAtMost(usize, 0, 1000);
+    }
+
+    const mul_time = std.time.microTimestamp();
+    //transpose B
+    for (0..n) |i| {
+        for (0..n) |j| {
+            b_t[i * n + j] = b[j * n + i];
+        }
+    }
+    //const trans_time = std.time.microTimestamp();
+    //printerr("{d}us to transpose, this will effect other numbers so delete this line\n", .{trans_time - mul_time});
+    for (0..n) |i| {
+        for (0..n) |j| {
+            var sum: usize = 0;
+            for (0..n) |k| {
+                sum += a[i * n + k] * b_t[j * n + k];
+            }
+            r[i * n + j] = sum;
+        }
+    }
+
+    const end_time = std.time.microTimestamp();
+
+    return TestResult.new(@src().fn_name, mul_time - start_time, end_time - mul_time);
+}
 fn transposeMul(allocator: std.mem.Allocator, n: usize) !TestResult {
     var prng = std.Random.DefaultPrng.init(42);
     const random = prng.random();
@@ -207,4 +251,6 @@ pub fn main() !void {
     transpose_result.display();
     const already_transposed_result = try alreadyTransposedMul(alloc, N);
     already_transposed_result.display();
+    const trans_to_new_result = try transposeToNewMul(alloc, N);
+    trans_to_new_result.display();
 }
