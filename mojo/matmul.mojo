@@ -16,6 +16,13 @@ struct TestResult:
     fn print(self):
         print(self.calling_fn_name + ":\n\t" + String(self.time) + "us")
 
+fn checkMatrix(n: Int, mat: collections.List[Int]) -> Bool:
+    for i in range(n * n):
+        if mat[i] != n:
+            print("ERROR MULTIPLYING:", mat[i])
+            return False
+    return True
+
 fn oneDimensionalNaiveList(N: Int) -> TestResult:
     """
     If we wanted to do more of a "malloc" style:
@@ -52,8 +59,8 @@ fn oneDimensionalNaiveList(N: Int) -> TestResult:
             print()
         
     var time_to_run = (end_mul - start_mul) // 1000 #ns to us
+    #checkMatrix(N, c)
     return TestResult(time_to_run, "oneDimensionalNaiveList") # __name__ i guess isn't a thing yet
-
 
 def main():
     args = sys.argv()

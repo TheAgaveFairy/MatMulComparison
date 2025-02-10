@@ -38,6 +38,54 @@ int ompNaive1D(int n) {
 	return (int) ((end_time - start_time) * 1000000.0);
 }
 
+int ompTrans1D(int n) {
+	int *a = malloc(n * n * sizeof(int));
+	int *b = malloc(n * n * sizeof(int));
+	int *c = malloc(n * n * sizeof(int));
+
+	#pragma omp parallel for
+	for (int i = 0; i < n * n; i++) {
+		a[i] = 1;
+		b[i] = 1;
+	}
+
+	double start_time = omp_get_wtime();
+
+	// transpose B
+	#pragma omp parallel for
+	for (int i = 0; i < n; i++) {
+		for (int j = 0; j < 0; j++) {
+			int temp = b[i * n + j];
+			b[i * n + j] = b[j * n + i];
+			b[j * n + i] = temp;
+		}
+	}
+
+	int i, j, k, temp;
+	#pragma omp parallel for private(j,temp,k)
+	for (i = 0; i < n; i++){
+		for(j = 0; j < n; j++){
+			temp = 0;
+			for (k = 0; k < n; k++){
+				temp += a[i * n + k] *  b[j * n + k];
+			}
+			c[i * n + j] = temp;
+		}
+	}
+
+	// transpose B
+	#pragma omp parallel for
+	for (int i = 0; i < n; i++) {
+		for (int j = 0; j < 0; j++) {
+			int temp = b[i * n + j];
+			b[i * n + j] = b[j * n + i];
+			b[j * n + i] = temp;
+		}
+	}
+	double end_time = omp_get_wtime();
+
+	return (int) ((end_time - start_time) * 1000000.0);
+}
 int transpose1D(int n) {
 	int *a = malloc(n * n * sizeof(int));
 	int *b = malloc(n * n * sizeof(int));
@@ -125,6 +173,8 @@ int main(int argc, char **argv) {
 	printf("Trans 1d: %10dus\n", transpose_us);
 	int omp_naive_us = ompNaive1D(N);
 	printf("OMP N 1d: %10dus\n", omp_naive_us);
+	int omp_trans_1d = ompTrans1D(N);
+	printf("OMP T 1d: %10dus\n", omp_trans_1d);
 
 	return EXIT_SUCCESS;
 }
