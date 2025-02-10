@@ -190,10 +190,82 @@ fn simdMul(allocator: std.mem.Allocator, n: usize) !TestResult {
     return TestResult.new(@src().fn_name, mul_time - start_time, end_time - mul_time);
 }
 
+fn ThreadData(comptime MatrixType: type) type { // comptime type gen fn!
+    return struct {
+        a: MatrixType,
+        b: MatrixType,
+        c: MatrixType,
+        n: usize,
+        row_start: usize,
+        row_end: usize,
+    };
+}
+
+fn threadedMul(comptime MatrixType: type, data_ptr: *anyopaque) void {
+    const data: ThreadData(MatrixType) = @ptrCast(data_ptr);
+    const n = data.n; // for ease
+    
+    for (data.row_start..data.row_end) |i| {
+        for (0..n) |j| {
+            var sum: MatrixType = 0;
+            for (0..n) |k| {
+                sum += data.a[i * n + k] * data.b[k * n + j];
+            }
+            data.c[i * n + j] = sum;
+        }
+    }
+}
+
+fn threadedOneDimMul(allocator: std.mem.Allocator, n: usize) !TestResult {
+    const start_time = std.time.microTimestamp();
+
+    const logical_cores = std.Thread.getCpuCount().?;
+    printerr("logical cores: {}\n", .{logical_cores});
+
+    const rowsPerThread = (n + logical_cores - 1) / logical_cores;
+
+    var thread_datas = try allocator.alloc(ThreadData(usize), logical_cores);
+    defer allocator.free(thread_datas);
+    var thread_handles = try allocator.alloc(*std.Thread, logical_cores);
+    defer allocator.free(thread_handles);
+
+    var a = try allocator.alloc(usize, n * n);
+    defer allocator.free(a);
+    var b = try allocator.alloc(usize, n * n);
+    defer allocator.free(b);
+    var r = try allocator.alloc(usize, n * n);
+    defer allocator.free(r);
+
+    for (0..logical_cores) |idx| {
+        ThreadData(usize) // too eeeeeeeeepy...... tomorrow. make threads, do things
+    }
+
+    for (0..n * n) |i| {
+        a[i] = 1;
+        b[i] = 1;
+    }
+
+    const mul_time = std.time.microTimestamp();
+
+
+    for (0..n) |i| {
+        for (0..n) |j| {
+            var sum: usize = 0;
+            for (0..n) |k| {
+                sum += a[i * n + k] * b[k * n + j];
+            }
+            r[i * n + j] = sum;
+        }
+    }
+    const end_time = std.time.microTimestamp();
+    return TestResult.new(@src().fn_name, mul_time - start_time, end_time - mul_time);
+    
+}
+
 /// Multiplies two n * n matrices and returns the time to alloc and multiply in us.
 fn oneDMul(allocator: std.mem.Allocator, n: usize) !TestResult {
-    var prng = std.Random.DefaultPrng.init(42);
-    const random = prng.random();
+    //var prng = std.Random.DefaultPrng.init(42);
+    //const random = prng.random();
 
     const start_time = std.time.microTimestamp();
 
@@ -205,8 +277,8 @@ fn oneDMul(allocator: std.mem.Allocator, n: usize) !TestResult {
     defer allocator.free(r);
 
     for (0..n * n) |i| {
-        a[i] = random.intRangeAtMost(usize, 0, 1000);
-        b[i] = random.intRangeAtMost(usize, 0, 1000);
+        a[i] = 1;//random.intRangeAtMost(usize, 0, 1000);
+        b[i] = 1;//1random.intRangeAtMost(usize, 0, 1000);
     }
 
     const mul_time = std.time.microTimestamp();
