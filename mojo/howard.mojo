@@ -4,14 +4,18 @@ import time
 
 import benchmark
 from algorithm import parallelize, vectorize
-import memory # memset_zero, UnsafePointer
+import memory  # memset_zero, UnsafePointer
 
 from algorithm import Static2DTileUnitFunc as Tile2DFunc
+
 alias tile_n = 64
 alias tile_k = 4
 
 alias type = DType.float32
 alias nelts = get_simd_width()
+
+alias dim = 4096
+
 
 fn get_simd_width() -> Int:
     return 2 * simdwidthof[type]()
@@ -49,7 +53,7 @@ struct Matrix[rows: Int, cols: Int]:
         return Self(data)
 
     fn __getitem__(self, y: Int, x: Int) -> Scalar[type]:
-        return self.load(y,x)
+        return self.load(y, x)
 
     fn __setitem__(mut self, y: Int, x: Int, val: Scalar[type]):
         return self.store(y, x, val)
@@ -66,41 +70,48 @@ struct Matrix[rows: Int, cols: Int]:
     fn store[nelts: Int = 1](self, y: Int, x: Int, val: SIMD[type, nelts]):
         self.data.store(y * self.cols + x, val)
 
+
 fn matmul_naive(mut C: Matrix, A: Matrix, B: Matrix):
     for m in range(C.rows):
         for n in range(C.cols):
-            for k in range(A.cols): C[m,n] += A[m,k] * B[k,n]
+            for k in range(A.cols):
+                C[m, n] += A[m, k] * B[k, n]
+
+
 fn bench_naive():
-    alias dim = 1024
-    var a = Matrix[dim,dim].rand()
-    var b = Matrix[dim,dim].rand()
-    var c = Matrix[dim,dim].rand()
+    var a = Matrix[dim, dim].rand()
+    var b = Matrix[dim, dim].rand()
+    var c = Matrix[dim, dim].rand()
 
     var start_time = time.perf_counter_ns()
     matmul_naive(c, a, b)
     var end_time = time.perf_counter_ns()
-    print("Naive:", (end_time - start_time)/ 1000.0, "us")
+    print("Naive:", (end_time - start_time) / 1000.0, "us")
+
 
 fn matmul_vectorized(mut C: Matrix, A: Matrix, B: Matrix):
     for m in range(C.rows):
         for k in range(A.cols):
+
             @parameter
             fn dot[nelts: Int](n: Int):
                 C.store[nelts](
-                    m, n, C.load[nelts](m,n) + A[m,k] * B.load[nelts](k,n)
+                    m, n, C.load[nelts](m, n) + A[m, k] * B.load[nelts](k, n)
                 )
 
             vectorize[dot, nelts, size = C.cols]()
-fn bench_vectorized():
-    alias dim = 1024
-    var a = Matrix[dim,dim].rand()
-    var b = Matrix[dim,dim].rand()
-    var c = Matrix[dim,dim].rand()
 
-    var start_time = time.perf_counter_ns() 
+
+fn bench_vectorized():
+    var a = Matrix[dim, dim].rand()
+    var b = Matrix[dim, dim].rand()
+    var c = Matrix[dim, dim].rand()
+
+    var start_time = time.perf_counter_ns()
     matmul_vectorized(c, a, b)
     var end_time = time.perf_counter_ns()
     print("vectorized", (end_time - start_time) / 1000.0, "us")
+
 
 fn matmul_parallelized(mut C: Matrix, A: Matrix, B: Matrix):
     var num_workers = C.rows
@@ -112,27 +123,32 @@ fn matmul_parallelized(mut C: Matrix, A: Matrix, B: Matrix):
             @parameter
             fn dot[nelts: Int](n: Int):
                 C.store[nelts](
-                    m, n, C.load[nelts](m,n) + A[m, k] * B.load[nelts](k,n)
+                    m, n, C.load[nelts](m, n) + A[m, k] * B.load[nelts](k, n)
                 )
+
             vectorize[dot, nelts, size = C.cols]()
+
     parallelize[calc_row](C.rows, num_workers)
 
+
 fn bench_parallelized():
-    alias dim = 1024
-    var a = Matrix[dim,dim].rand()
-    var b = Matrix[dim,dim].rand()
-    var c = Matrix[dim,dim].rand()
+    var a = Matrix[dim, dim].rand()
+    var b = Matrix[dim, dim].rand()
+    var c = Matrix[dim, dim].rand()
 
     var start_mul = time.perf_counter_ns()
     matmul_parallelized(c, a, b)
     var end_mul = time.perf_counter_ns()
     print("Parallelized:", (end_mul - start_mul) / 1000.0, "us")
 
+
 # Perform 2D tiling on the iteration space defined by end_x and end_y
 fn tile[tiled_fn: Tile2DFunc, tile_x: Int, tile_y: Int](end_x: Int, end_y: Int):
     for y in range(0, end_y, tile_y):
         for x in range(0, end_x, tile_x):
             tiled_fn[tile_x, tile_y](x, y)
+
+
 # Use the above tile function to perform tiled matmul
 # Also parallelize with num_workers threads
 fn matmul_tiled(mut C: Matrix, A: Matrix, B: Matrix):
@@ -158,18 +174,21 @@ fn matmul_tiled(mut C: Matrix, A: Matrix, B: Matrix):
         tile[calc_tile, tile_n, tile_k](C.cols, B.rows)
 
     parallelize[calc_row](C.rows, num_workers)
-fn bench_tiled():
-    alias dim = 1024
-    var a = Matrix[dim,dim].rand()
-    var b = Matrix[dim,dim].rand()
-    var c = Matrix[dim,dim].rand()
 
-    var start_time = time.perf_counter_ns() 
+
+fn bench_tiled():
+    var a = Matrix[dim, dim].rand()
+    var b = Matrix[dim, dim].rand()
+    var c = Matrix[dim, dim].rand()
+
+    var start_time = time.perf_counter_ns()
     matmul_tiled(c, a, b)
     var end_time = time.perf_counter_ns()
     print("tiled", (end_time - start_time) / 1000.0, "us")
 
+
 def main():
+    """
     var report = benchmark.benchmark.run[bench_naive]()
     print("simple as")
     report.print_full("ns")
@@ -178,10 +197,15 @@ def main():
     print("vectorized")
     report.print_full("ns")
 
-    report = benchmark.benchmark.run[bench_parallelized]() 
+    report = benchmark.benchmark.run[bench_parallelized]()
     print("parallelized vectorized")
     report.print_full("ns")
 
-    report = benchmark.benchmark.run[bench_tiled]() 
+    report = benchmark.benchmark.run[bench_tiled]()
     print("tiled parallelized vectorized")
     report.print_full("ns")
+    """
+    bench_naive()
+    bench_vectorize()
+    bench_parallelized()
+    bench_tiled()
