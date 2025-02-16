@@ -1,5 +1,3 @@
-// #include <__clang_cuda_builtin_vars.h>
-// #include <cmath>
 #include <cstdlib>
 #include <cuda_device_runtime_api.h>
 #include <cuda_runtime_api.h>
@@ -32,6 +30,11 @@ typedef struct {
 
 } TestResult;
 
+void printDim3(dim3 grid, dim3 block) {
+  printf("Grid: (%d, %d, %d) blocks.\nBlocks: (%d, %d, %d) threads.\n", grid.x,
+         grid.y, grid.z, block.x, block.y, block.z);
+}
+
 void printTestResult(TestResult tr) {
   printf("%s:\n\tPrep: %.2fus\n\tRun : %.2fus\n", tr.calling_fn, tr.prep_time,
          tr.run_time);
@@ -45,6 +48,16 @@ bool checkMatrix(int *arr, int n) {
     }
   }
   return true;
+}
+
+void printMatrix(int *arr, int n) {
+  for (int i = 0; i < n; i++) {
+    for (int j = 0; j < n; j++) {
+      printf("%5d", arr[i * n + j]);
+    }
+    printf("\n");
+  }
+  printf("\n");
 }
 
 dim3 calcGridSize(int n, dim3 block) {
@@ -68,6 +81,88 @@ __global__ void transposeKernel(int n, int *input, int *output) {
   if (row < n && col < n) {
     output[col * n + row] = input[row * n + col];
   }
+}
+
+__global__ void coalescedOneDimKernel(int n, int *a, int *b, int *c) {
+  const int x = blockIdx.x * blockDim.x + (threadIdx.x / blockDim.x);
+  const int y = blockIdx.y * blockDim.y + (threadIdx.x % blockDim.y);
+
+  if (x == 0 && y == 0) {
+    printf("blockDim.x = %d, blockDim.y = %d\n", blockDim.x, blockDim.y);
+    printf("(%d,%d), ", x, y);
+  }
+  // printf("(%d,%d), ", x, y);
+
+  if (x < n && y < n) {
+    int sum = 0;
+    for (int k = 0; k < n; k++) {
+      sum += a[x * n + k] * b[k * n + y];
+    }
+    c[x * n + y] = sum;
+    // if (sum != n) printf("Error calculating from coalesced\tn = %d sum =
+    // %d\n", n, sum);
+  }
+}
+
+TestResult coalescedOneDim(int n) {
+  cudaEvent_t prep, start, end;
+  cudaEventCreate(&prep);
+  cudaEventCreate(&start);
+  cudaEventCreate(&end);
+  float ms_prep, ms_run;
+
+  cudaEventRecord(prep);
+
+  size_t capacity = n * n * sizeof(int);
+
+  int *a, *b, *c;
+  a = (int *)malloc(capacity);
+  b = (int *)malloc(capacity);
+  c = (int *)malloc(capacity);
+
+  for (int i = 0; i < n * n; i++) {
+    a[i] = 1;
+    b[i] = 1;
+  }
+
+  int *dev_a, *dev_b, *dev_c;
+  cudaMalloc(&dev_a, capacity);
+  cudaMalloc(&dev_b, capacity);
+  cudaMalloc(&dev_c, capacity);
+
+  gpuErrchk(cudaMemcpy(dev_a, a, capacity, cudaMemcpyHostToDevice));
+  gpuErrchk(cudaMemcpy(dev_b, b, capacity, cudaMemcpyHostToDevice));
+
+  dim3 dimBlock = calcBlockSize(n);
+  dim3 dimGrid = calcGridSize(n, dimBlock);
+  printDim3(dimGrid, dimBlock);
+
+  cudaEventRecord(start);
+
+  coalescedOneDimKernel<<<dimGrid, dimBlock>>>(n, dev_a, dev_b, dev_c);
+  gpuErrchk(cudaPeekAtLastError());
+
+  cudaMemcpy(c, dev_c, capacity, cudaMemcpyDeviceToHost);
+
+  cudaFree(dev_a);
+  cudaFree(dev_b);
+  cudaFree(dev_c);
+
+  cudaEventRecord(end);
+  cudaEventSynchronize(end);
+  cudaEventElapsedTime(&ms_run, start, end);
+  cudaEventElapsedTime(&ms_prep, prep, start);
+
+  TestResult tr;
+  tr.calling_fn = "coalescedOneDim";
+  tr.prep_time = ms_prep * 1000;
+  tr.run_time = ms_run * 1000;
+
+  free(a);
+  free(b);
+  free(c);
+
+  return tr;
 }
 
 __global__ void transOneDimKernel(int n, int *a, int *b_t, int *c) {
@@ -240,11 +335,14 @@ int main(int argc, char **argv) {
   int n_exp = atoi(argv[1]);
   int n = 1 << n_exp;
 
-  TestResult naiveOneDim_tr = naiveOneDim(n);
-  printTestResult(naiveOneDim_tr);
+  TestResult naive_one_dim = naiveOneDim(n);
+  printTestResult(naive_one_dim);
 
   TestResult transOneDim_tr = transOneDim(n);
   printTestResult(transOneDim_tr);
+
+  TestResult coalesced_one_dim = coalescedOneDim(n);
+  printTestResult(coalesced_one_dim);
 
   return EXIT_SUCCESS;
 }

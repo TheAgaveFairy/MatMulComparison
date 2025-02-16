@@ -206,6 +206,6 @@ def main():
     report.print_full("ns")
     """
     bench_naive()
-    bench_vectorize()
+    bench_vectorized()
     bench_parallelized()
     bench_tiled()
