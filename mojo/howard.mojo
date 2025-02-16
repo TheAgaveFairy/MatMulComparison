@@ -97,7 +97,10 @@ fn bench_vectorized():
     var b = Matrix[dim,dim].rand()
     var c = Matrix[dim,dim].rand()
 
+    var start_time = time.perf_counter_ns() 
     matmul_vectorized(c, a, b)
+    var end_time = time.perf_counter_ns()
+    print("vectorized", (end_time - start_time) / 1000.0, "us")
 
 fn matmul_parallelized(mut C: Matrix, A: Matrix, B: Matrix):
     var num_workers = C.rows
@@ -143,7 +146,6 @@ fn matmul_tiled(mut C: Matrix, A: Matrix, B: Matrix):
 
                 @parameter
                 fn dot[nelts: Int](n: Int):
-                    print(".", end="")
                     C.store(
                         m,
                         n + x,
@@ -162,21 +164,24 @@ fn bench_tiled():
     var b = Matrix[dim,dim].rand()
     var c = Matrix[dim,dim].rand()
 
+    var start_time = time.perf_counter_ns() 
     matmul_tiled(c, a, b)
+    var end_time = time.perf_counter_ns()
+    print("tiled", (end_time - start_time) / 1000.0, "us")
 
 def main():
     var report = benchmark.benchmark.run[bench_naive]()
-    print("NAIVE report in MILLIseconds")
-    report.print_full("us")
+    print("simple as")
+    report.print_full("ns")
 
     report = benchmark.benchmark.run[bench_vectorized]()
-    print("VECTO report in MILLIseconds")
+    print("vectorized")
     report.print_full("ns")
 
     report = benchmark.benchmark.run[bench_parallelized]() 
-    print("PARAL report in MILLIseconds")
+    print("parallelized vectorized")
     report.print_full("ns")
 
     report = benchmark.benchmark.run[bench_tiled]() 
-    print("TILED report in MILLIseconds")
+    print("tiled parallelized vectorized")
     report.print_full("ns")
