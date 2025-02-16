@@ -202,7 +202,6 @@ fn ThreadData(comptime MatrixType: type) type { // comptime type gen fn!
     };
 }
 
-//fn threadedMul(data_ptr: *anyopaque) void {
 fn threadedMul(data: *ThreadData([]usize)) void {
     const n = data.n; // for ease
 
@@ -215,6 +214,78 @@ fn threadedMul(data: *ThreadData([]usize)) void {
             data.c[i * n + j] = sum;
         }
     }
+}
+
+fn threadedTransMul(data: *ThreadData([]usize)) void {
+    const n = data.n; // for ease
+
+    for (data.row_start..data.row_end) |i| {
+        for (0..n) |j| {
+            var sum: usize = 0;
+            for (0..n) |k| {
+                sum += data.a[i * n + k] * data.b[j * n + k];
+            }
+            data.c[i * n + j] = sum;
+        }
+    }
+}
+
+fn threadedTransOneDimMul(allocator: std.mem.Allocator, n: usize) !TestResult {
+    const MatrixType = []usize;
+    const ThreadDataType = ThreadData(MatrixType);
+
+    const start_time = std.time.microTimestamp();
+
+    const logical_cores = try std.Thread.getCpuCount();
+    printerr("logical cores: {}\n", .{logical_cores});
+
+    var thread_datas = try allocator.alloc(ThreadDataType, logical_cores);
+    defer allocator.free(thread_datas);
+    var thread_handles = try allocator.alloc(std.Thread, logical_cores);
+    defer allocator.free(thread_handles);
+
+    var a = try allocator.alloc(usize, n * n);
+    defer allocator.free(a);
+    var b = try allocator.alloc(usize, n * n);
+    defer allocator.free(b);
+    const c = try allocator.alloc(usize, n * n);
+    defer allocator.free(c);
+
+    for (0..n * n) |i| {
+        a[i] = 1;
+        b[i] = 1;
+    }
+
+    for (0..n) |i| {
+        for (0..n) |j| {
+            const temp = a[i * n + j];
+            a[i * n + j] = a[j * n + i];
+            a[j * n + i] = temp;
+        }
+    }
+
+    const stride = n / logical_cores;
+    const mul_time = std.time.microTimestamp();
+
+    for (0..logical_cores) |idx| {
+        thread_datas[idx] = ThreadDataType{
+            .a = a,
+            .b = b,
+            .c = c,
+            .n = n,
+            .row_start = idx * stride,
+            .row_end = if (idx == logical_cores - 1) n else (idx + 1) * stride,
+        };
+
+        thread_handles[idx] = try std.Thread.spawn(.{}, threadedTransMul, .{&thread_datas[idx]});
+    }
+
+    for (thread_handles) |th| th.join();
+
+    //printMat(n, []usize, c);
+
+    const end_time = std.time.microTimestamp();
+    return TestResult.new(@src().fn_name, mul_time - start_time, end_time - mul_time);
 }
 
 fn threadedOneDimMul(allocator: std.mem.Allocator, n: usize) !TestResult {
@@ -341,4 +412,6 @@ pub fn main() !void {
     trans_to_new_result.display();
     const threaded_one_dim_result = try threadedOneDimMul(alloc, N);
     threaded_one_dim_result.display();
+    const threaded_trans_result = try threadedTransOneDimMul(alloc, N);
+    threaded_trans_result.display();
 }

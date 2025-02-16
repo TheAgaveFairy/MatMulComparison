@@ -1,0 +1,3 @@
+Timings aren't consistent - I'd make them all the same but I'm not sure which I want to do.
+
+Example: Is transposing a matrix part of the prep time or mart of the "multiplication" step as an optimization?
