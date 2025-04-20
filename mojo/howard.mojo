@@ -205,6 +205,7 @@ def main():
     print("tiled parallelized vectorized")
     report.print_full("ns")
     """
+    print("dim of matrix:", dim)
     bench_naive()
     bench_vectorized()
     bench_parallelized()
