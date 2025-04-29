@@ -163,6 +163,7 @@ int main(int argc, char **argv) {
 	}
 
 	int n_exp = atoi(argv[1]);
+	//int n_exp = 10;
 	int N = 1 << n_exp;
 
 	//omp_set_num_threads(12);
